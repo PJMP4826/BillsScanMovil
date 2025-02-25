@@ -1,6 +1,6 @@
 # BillsScan
 
-![Vista previa de BillsScan](https://drive.google.com/u/2/drive-viewer/AKGpihb5xnElvNAmjKDzllkTYdPkM7kxsKXPGP2w8NuuGv7AxrPQ-_FbQ0OwzOgfBUO3Jp5l_sC4FkgfvU1zE4QNqzdjwZtz82FqfG0=s1600-rw-v1)
+![Vista previa de BillsScan](https://raw.githubusercontent.com/PJMP4826/BillsScanMovil/refs/heads/master/app/docs/MaquetacionMovil.png)
 
 BillsScan es una aplicación móvil diseñada para la digitalización, almacenamiento y consulta de tickets o recibos de compra. Su objetivo es ayudar a las empresas a gestionar de manera eficiente la información de sus compras, facilitando el acceso y organización de los comprobantes digitales.
 
@@ -25,26 +25,12 @@ BillsScan está especialmente diseñada para el departamento de compras y el equ
 
 ## Instalación y Configuración
 
-1. Clonar el repositorio:
+Clonar el repositorio:
 
 ```bash
 git clone https://github.com/PJMP4826/BillsScanMovil.git
 ```
 
-2. Abrir el proyecto en Android Studio.
-
-3. Configurar Firebase:
-    - Conectar el proyecto a Firebase desde Android Studio.
-    - Habilitar Firestore, Authentication y Storage.
-    - Descargar y colocar el archivo google-services.json en la carpeta app.
-
-4. Configurar permisos en el archivo AndroidManifest.xml:
-
-```xml
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-```
 
 ## Escáner de Documentos con ML Kit
 
