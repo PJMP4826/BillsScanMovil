@@ -1,6 +1,6 @@
 # BillsScan
 
-![Vista previa de BillsScan](ruta/a/imagen.png)
+![Vista previa de BillsScan](https://drive.google.com/u/2/drive-viewer/AKGpihb5xnElvNAmjKDzllkTYdPkM7kxsKXPGP2w8NuuGv7AxrPQ-_FbQ0OwzOgfBUO3Jp5l_sC4FkgfvU1zE4QNqzdjwZtz82FqfG0=s1600-rw-v1)
 
 BillsScan es una aplicación móvil diseñada para la digitalización, almacenamiento y consulta de tickets o recibos de compra. Su objetivo es ayudar a las empresas a gestionar de manera eficiente la información de sus compras, facilitando el acceso y organización de los comprobantes digitales.
 
@@ -28,7 +28,7 @@ BillsScan está especialmente diseñada para el departamento de compras y el equ
 1. Clonar el repositorio:
 
 ```bash
-git clone https://github.com/tu-usuario/billsscan.git
+git clone https://github.com/PJMP4826/BillsScanMovil.git
 ```
 
 2. Abrir el proyecto en Android Studio.
