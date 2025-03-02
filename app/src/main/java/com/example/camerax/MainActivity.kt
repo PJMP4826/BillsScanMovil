@@ -35,7 +35,6 @@ import coil.compose.AsyncImage
 import com.example.camerax.ui.theme.CameraXTheme
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.RESULT_FORMAT_JPEG
-import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.RESULT_FORMAT_PDF
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.SCANNER_MODE_FULL
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
@@ -57,6 +56,9 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import com.example.camerax.screens.ScanScreen
 import com.example.camerax.screens.HistoryScreen
+import com.example.camerax.navigation.AppNavigation
+import com.example.camerax.repositories.TicketRepository
+import com.example.camerax.viewmodels.SharedViewModel
 
 interface TicketApiService {
     @Multipart
@@ -73,15 +75,20 @@ data class CompraDetalle(val cantidad: Int, val descripcion: String, val precio_
 data class Encabezado(val nombre_empresa: String, val fecha: String, val hora: String)
 
 class MainActivity : ComponentActivity() {
+    private lateinit var viewModel: SharedViewModel
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val repository = TicketRepository(this)
+        viewModel = SharedViewModel(repository)
 
         val options = GmsDocumentScannerOptions.Builder()
             .setScannerMode(SCANNER_MODE_FULL)
             .setPageLimit(3)
             .setGalleryImportAllowed(false)
-            .setResultFormats(RESULT_FORMAT_JPEG, RESULT_FORMAT_PDF)
+            .setResultFormats(RESULT_FORMAT_JPEG)
             .build()
 
         val scanner = GmsDocumentScanning.getClient(options)
@@ -95,7 +102,7 @@ class MainActivity : ComponentActivity() {
             .build()
 
         val retrofit = Retrofit.Builder()
-            .baseUrl("http://192.168.219.14:5000") // Asegúrate de que esta sea la URL correcta
+            .baseUrl("http://192.168.100.56:5000") // Asegúrate de que esta sea la URL correcta
             .client(client)  // Usar el cliente configurado con tiempos de espera
             .addConverterFactory(GsonConverterFactory.create())
             .build()
@@ -105,86 +112,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             CameraXTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    var selectedTab by remember { mutableStateOf(0) }
-                    var scannedImageUri by remember { mutableStateOf<List<Uri>>(emptyList()) }
-                    var ticketResponse by remember { mutableStateOf<TicketResponse?>(null) }
-
-                    val scannerLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartIntentSenderForResult()) {
-                        if (it.resultCode == RESULT_OK) {
-                            val scanningResult = GmsDocumentScanningResult.fromActivityResultIntent(it.data)
-                            scanningResult?.pages?.let { pages ->
-                                scannedImageUri = listOf(pages[0].imageUri)
-                                val imageFile = File(filesDir, "scan.jpg")
-                                contentResolver.openInputStream(pages[0].imageUri)?.use { inputStream ->
-                                    FileOutputStream(imageFile).use { outputStream ->
-                                        inputStream.copyTo(outputStream)
-                                    }
-                                }
-
-                                // Verifica si el archivo se creó correctamente
-                                if (imageFile.exists()) {
-                                    val requestFile = RequestBody.create("image/jpeg".toMediaTypeOrNull(), imageFile)
-                                    val imagePart = MultipartBody.Part.createFormData("imagen", imageFile.name, requestFile)
-
-                                    Log.d("Upload", "Iniciando subida de imagen...")
-
-                                    lifecycleScope.launch {
-                                        try {
-                                            // Subir la imagen
-                                            ticketResponse = apiService.uploadImage(imagePart)
-                                            ticketResponse?.let { response ->
-                                                // Save both ticket and image URI
-                                                ticketDataStore.saveTicket(response, pages[0].imageUri)
-                                            }
-                                            Log.d("Upload", "Respuesta recibida: $ticketResponse")
-                                        } catch (e: Exception) {
-                                            // Mostrar mensaje de error más claro
-                                            Log.e("UploadError", "Error al subir la imagen: ${e.message}")
-                                            Toast.makeText(applicationContext, "Error al subir la imagen: ${e.message}", Toast.LENGTH_LONG).show()
-                                        }
-                                    }
-                                } else {
-                                    Log.e("UploadError", "El archivo de imagen no se creó correctamente.")
-                                    Toast.makeText(applicationContext, "Error: El archivo de imagen no se creó correctamente.", Toast.LENGTH_LONG).show()
-                                }
-                            }
-                        }
-                    }
-
-                    Column {
-                        TabRow(selectedTabIndex = selectedTab) {
-                            Tab(
-                                selected = selectedTab == 0,
-                                onClick = { selectedTab = 0 },
-                                text = { Text("Scan") }
-                            )
-                            Tab(
-                                selected = selectedTab == 1,
-                                onClick = { selectedTab = 1 },
-                                text = { Text("History") }
-                            )
-                        }
-
-                        when (selectedTab) {
-                            0 -> ScanScreen(
-                                scannedImageUri = scannedImageUri,
-                                ticketResponse = ticketResponse,
-                                onScanClick = {
-                                    scanner.getStartScanIntent(this@MainActivity)
-                                        .addOnSuccessListener { intentSender ->
-                                            scannerLauncher.launch(
-                                                IntentSenderRequest.Builder(intentSender).build()
-                                            )
-                                        }
-                                        .addOnFailureListener {
-                                            Log.e("ScanError", "Error al iniciar el escaneo: ${it.message}")
-                                            Toast.makeText(applicationContext, "Error al iniciar el escaneo: ${it.message}", Toast.LENGTH_LONG).show()
-                                        }
-                                }
-                            )
-                            1 -> HistoryScreen()
-                        }
-                    }
+                    AppNavigation(
+                        viewModel = viewModel,
+                        apiService = apiService,
+                        ticketDataStore = ticketDataStore,
+                        lifecycleScope = lifecycleScope,
+                        activity = this
+                    )
                 }
             }
         }

@@ -12,19 +12,19 @@ data class TicketWithImage(
 )
 
 class TicketDataStore(context: Context) {
-    private val prefs: SharedPreferences = context.getSharedPreferences("tickets", Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences = context.getSharedPreferences("ticket_images", Context.MODE_PRIVATE)
     private val gson = Gson()
 
     fun saveTicket(ticket: TicketResponse, imageUri: Uri) {
-        val tickets = getTickets().toMutableList()
-        tickets.add(0, TicketWithImage(ticket, imageUri.toString()))
-        val json = gson.toJson(tickets)
-        prefs.edit().putString("saved_tickets", json).apply()
+        val ticketImages = getTicketImages().toMutableMap()
+        ticketImages[ticket.resultado.encabezado.nombre_empresa] = imageUri.toString()
+        val json = gson.toJson(ticketImages)
+        prefs.edit().putString("ticket_images", json).apply()
     }
 
-    fun getTickets(): List<TicketWithImage> {
-        val json = prefs.getString("saved_tickets", null) ?: return emptyList()
-        val type = object : TypeToken<List<TicketWithImage>>() {}.type
+    fun getTicketImages(): Map<String, String> {
+        val json = prefs.getString("ticket_images", null) ?: return emptyMap()
+        val type = object : TypeToken<Map<String, String>>() {}.type
         return gson.fromJson(json, type)
     }
 }

@@ -1,84 +1,100 @@
 package com.example.camerax.screens
 
+import android.net.Uri
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.example.camerax.TicketDataStore
-import com.example.camerax.TicketWithImage
-import android.net.Uri
+import com.example.camerax.viewmodels.SharedViewModel
+import com.example.camerax.models.Ticket
 
 @Composable
-fun HistoryScreen() {
-    val context = LocalContext.current
-    val ticketDataStore = remember { TicketDataStore(context) }
-    val tickets = remember { ticketDataStore.getTickets() }
+fun HistoryScreen(viewModel: SharedViewModel) {
+    val tickets by viewModel.allTickets.collectAsState(initial = emptyList())
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+    LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        items(tickets) { ticketWithImage ->
-            TicketCard(ticketWithImage = ticketWithImage)
+        items(tickets) { ticket ->
+            HistoryTicketCard(ticket)
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TicketCard(ticketWithImage: TicketWithImage) {
+fun HistoryTicketCard(ticket: Ticket) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(4.dp)
+            .padding(vertical = 8.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
+                .padding(16.dp)
         ) {
-            // Image
+            // Imagen del ticket
             AsyncImage(
-                model = Uri.parse(ticketWithImage.imageUri),
+                model = Uri.parse(ticket.imageUri),
                 contentDescription = null,
-                contentScale = ContentScale.FillWidth,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp)
+                    .height(200.dp),
+                contentScale = ContentScale.Crop
             )
-
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Información del ticket
+            Text(
+                text = ticket.empresa,
+                style = MaterialTheme.typography.titleLarge
+            )
+            
+            Text(
+                text = "Fecha: ${ticket.fecha}",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            
+            Text(
+                text = "Hora: ${ticket.hora}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            
             Spacer(modifier = Modifier.height(8.dp))
-
-            // Ticket information
-            Text(
-                text = ticketWithImage.ticket.resultado.encabezado.nombre_empresa,
-                style = MaterialTheme.typography.titleSmall
-            )
-            Text(
-                text = "Fecha: ${ticketWithImage.ticket.resultado.encabezado.fecha}",
-                style = MaterialTheme.typography.bodySmall
-            )
-            Text(
-                text = "Hora: ${ticketWithImage.ticket.resultado.encabezado.hora}",
-                style = MaterialTheme.typography.bodySmall
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            ticketWithImage.ticket.resultado.detalle_compra.forEach { detalle ->
-                Text(
-                    text = "${detalle.cantidad} x ${detalle.descripcion} - \$${detalle.subtotal}",
-                    style = MaterialTheme.typography.bodySmall
-                )
+            
+            // Detalles de la compra
+            ticket.detalles.forEach { detalle ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "${detalle.cantidad}x ${detalle.descripcion}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = "$${detalle.subtotal}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Total
+            Text(
+                text = "Total: $${ticket.total}",
+                style = MaterialTheme.typography.titleMedium
+            )
         }
     }
 }
