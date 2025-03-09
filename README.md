@@ -98,7 +98,7 @@ val options = GmsDocumentScannerOptions.Builder()
 Después de configurar tus GmsDocumentScannerOptions, obtén una instancia de GmsDocumentScanner y lanza la actividad del escáner siguiendo las APIs de AndroidX Activity Result:
 
 ```kotlin
-val scanner = GmsDocumentScanning.getClient(options)
+/*val scanner = GmsDocumentScanning.getClient(options)
 val scannerLauncher = registerForActivityResult(StartIntentSenderForResult()) { result ->
     if (result.resultCode == RESULT_OK) {
         val result = GmsDocumentScanningResult.fromActivityResultIntent(result.data)
@@ -121,7 +121,7 @@ scanner.getStartScanIntent(activity)
     .addOnFailureListener { exception ->
         // Manejar el fallo
     }
-```
+```*/
 
 ## Uso de la Aplicación
 
