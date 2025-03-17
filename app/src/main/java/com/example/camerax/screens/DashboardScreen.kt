@@ -279,25 +279,6 @@ fun DashboardScreen(
                             )
                         }
 
-                        // Cargar Button
-                        Button(
-                            onClick = {
-                                galleryLauncher.launch("image/*")
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(40.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDAAA3F)),
-                            shape = RoundedCornerShape(16.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp)
-                        ) {
-                            Text(
-                                "Cargar",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
                     }
                 }
             }

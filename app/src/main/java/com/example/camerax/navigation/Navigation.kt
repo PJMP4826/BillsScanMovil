@@ -24,6 +24,17 @@ import androidx.compose.foundation.shape.CircleShape
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
+import android.net.Uri
+import android.util.Log
+import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import com.example.camerax.models.Ticket
+import com.example.camerax.models.DetalleCompra
+import com.example.camerax.TicketResponse
 
 enum class Screen {
     Dashboard, History, Categories, Tickets
@@ -54,12 +65,109 @@ fun AppNavigation(
         GmsDocumentScanning.getClient(options)
     }
 
+    // Nueva variable para almacenar la URI de la imagen escaneada
+    var scannedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var ticketResponse by remember { mutableStateOf<TicketResponse?>(null) }
+    var isProcessing by remember { mutableStateOf(false) }
+
+    // Función para procesar la imagen
+    fun processImage(imageUri: Uri, sourceFileName: String) {
+        Log.d("AppNavigation", "Iniciando procesamiento de imagen: $sourceFileName")
+        val destinationFile = File(activity.filesDir, sourceFileName)
+
+        try {
+            activity.contentResolver.openInputStream(imageUri)?.use { inputStream ->
+                FileOutputStream(destinationFile).use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+            Log.d(
+                "AppNavigation",
+                "Imagen copiada al almacenamiento interno: ${destinationFile.absolutePath}"
+            )
+
+            if (destinationFile.exists()) {
+                val requestFile =
+                    RequestBody.create("image/jpeg".toMediaTypeOrNull(), destinationFile)
+                val imagePart =
+                    MultipartBody.Part.createFormData("imagen", destinationFile.name, requestFile)
+
+                isProcessing = true
+
+                lifecycleScope.launch {
+                    try {
+                        Log.d("AppNavigation", "Enviando imagen al servidor...")
+                        val response = apiService.uploadImage(imagePart)
+                        ticketResponse = response
+                        Log.d("AppNavigation", "Respuesta recibida del servidor")
+
+                        response?.let {
+                            Log.d("AppNavigation", "Guardando ticket en TicketDataStore")
+                            ticketDataStore.saveTicket(it, imageUri)
+
+                            val newTicket = Ticket(
+                                empresa = it.resultado.encabezado.nombre_empresa,
+                                fecha = it.resultado.encabezado.fecha,
+                                hora = it.resultado.encabezado.hora,
+                                imageUri = imageUri.toString(),
+                                detalles = it.resultado.detalle_compra.map { detalle ->
+                                    DetalleCompra(
+                                        cantidad = detalle.cantidad,
+                                        descripcion = detalle.descripcion,
+                                        precioUnitario = detalle.precio_unitario,
+                                        subtotal = detalle.subtotal
+                                    )
+                                }
+                            )
+
+                            viewModel.addNewTicket(newTicket)
+                            viewModel.refreshTickets()
+                            Log.d(
+                                "AppNavigation",
+                                "Proceso completado. Ticket añadido y UI actualizada"
+                            )
+                        }
+                    } catch (e: Exception) {
+                        Log.e("UploadError", "Error al procesar la imagen: ${e.message}", e)
+                        Toast.makeText(
+                            activity,
+                            "Error al procesar la imagen: ${e.message}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } finally {
+                        isProcessing = false
+                    }
+                }
+            } else {
+                Log.e("FileError", "El archivo de destino no existe")
+                Toast.makeText(
+                    activity,
+                    "No se pudo guardar la imagen localmente",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        } catch (e: Exception) {
+            Log.e("FileError", "Error al guardar la imagen: ${e.message}", e)
+            Toast.makeText(activity, "Error al guardar la imagen: ${e.message}", Toast.LENGTH_SHORT)
+                .show()
+        }
+    }
+
     val scannerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             val scanningResult = GmsDocumentScanningResult.fromActivityResultIntent(result.data)
-            // Manejar el resultado del escaneo aquí
+            scanningResult?.pages?.firstOrNull()?.let { page ->
+                scannedImageUri = page.imageUri
+
+                // Generar un nombre de archivo único basado en timestamp
+                val timestamp = System.currentTimeMillis()
+                val fileName = "scan_$timestamp.jpg"
+
+                // Procesar la imagen usando la función común
+                scannedImageUri?.let { uri -> processImage(uri, fileName) }
+            }
         }
     }
 
@@ -69,11 +177,23 @@ fun AppNavigation(
         isLoading = false
     }
 
+    // Mostrar un diálogo de procesamiento mientras isProcessing es true
+    if (isProcessing) {
+        AlertDialog(
+            onDismissRequest = { /* No permitir cerrar */ },
+            title = { Text("Procesando...") },
+            text = { Text("Por favor espera mientras se procesa la imagen.") },
+            confirmButton = { /* Sin botón de confirmación */ }
+        )
+    }
+
     Scaffold(
         bottomBar = {
             if (!isLoading) {  // Ocultar barra de navegación mientras carga
-                NavigationBar {
-                    // First two navigation items
+                NavigationBar(
+                    containerColor = Color(0xFF2A4D8A)
+                ) {
+                    // First navigation item
                     NavigationBarItem(
                         selected = currentScreen == Screen.Dashboard,
                         onClick = { currentScreen = Screen.Dashboard },
@@ -85,8 +205,17 @@ fun AppNavigation(
                                 modifier = Modifier.size(24.dp),
                                 tint = Color.Black
                             )
-                        }
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = Color(0xFFDAAA3F),
+                            selectedIconColor = Color(0xFFDAAA3F),
+                            selectedTextColor = Color(0xFFDAAA3F),
+                            unselectedIconColor = Color.Black,
+                            unselectedTextColor = Color.Black
+                        )
                     )
+
+                    // Second navigation item
                     NavigationBarItem(
                         selected = currentScreen == Screen.History,
                         onClick = { currentScreen = Screen.History },
@@ -98,10 +227,17 @@ fun AppNavigation(
                                 modifier = Modifier.size(24.dp),
                                 tint = Color.Black
                             )
-                        }
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = Color(0xFFDAAA3F),
+                            selectedIconColor = Color(0xFFDAAA3F),
+                            selectedTextColor = Color(0xFFDAAA3F),
+                            unselectedIconColor = Color.Black,
+                            unselectedTextColor = Color.Black
+                        )
                     )
 
-                    // Center scan button - MODIFIED HERE
+                    // Center scan button (No se cambia)
                     NavigationBarItem(
                         selected = false,
                         onClick = {
@@ -122,7 +258,7 @@ fun AppNavigation(
                         icon = {
                             Box(
                                 modifier = Modifier
-                                    .offset(y = (-10).dp) // Lift button slightly above the navigation bar
+                                    .offset(y = (-10).dp)
                                     .size(56.dp)
                                     .background(Color.White, shape = CircleShape)
                                     .padding(4.dp),
@@ -136,11 +272,10 @@ fun AppNavigation(
                                 )
                             }
                         },
-                        // Empty label to maintain vertical spacing
                         label = { Box(modifier = Modifier.height(16.dp)) {} }
                     )
 
-                    // Last two navigation items
+                    // Third navigation item
                     NavigationBarItem(
                         selected = currentScreen == Screen.Categories,
                         onClick = { currentScreen = Screen.Categories },
@@ -152,8 +287,17 @@ fun AppNavigation(
                                 modifier = Modifier.size(24.dp),
                                 tint = Color.Black
                             )
-                        }
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = Color(0xFFDAAA3F),
+                            selectedIconColor = Color(0xFFDAAA3F),
+                            selectedTextColor = Color(0xFFDAAA3F),
+                            unselectedIconColor = Color.Black,
+                            unselectedTextColor = Color.Black
+                        )
                     )
+
+                    // Fourth navigation item
                     NavigationBarItem(
                         selected = currentScreen == Screen.Tickets,
                         onClick = { currentScreen = Screen.Tickets },
@@ -165,7 +309,14 @@ fun AppNavigation(
                                 modifier = Modifier.size(24.dp),
                                 tint = Color.Black
                             )
-                        }
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = Color(0xFFDAAA3F),
+                            selectedIconColor = Color(0xFFDAAA3F),
+                            selectedTextColor = Color(0xFFDAAA3F),
+                            unselectedIconColor = Color.Black,
+                            unselectedTextColor = Color.Black
+                        )
                     )
                 }
             }
@@ -178,7 +329,14 @@ fun AppNavigation(
                 }
             } else {
                 when (currentScreen) {
-                    Screen.Dashboard -> DashboardScreen(viewModel, apiService, ticketDataStore, lifecycleScope, activity)
+                    Screen.Dashboard -> DashboardScreen(
+                        viewModel,
+                        apiService,
+                        ticketDataStore,
+                        lifecycleScope,
+                        activity
+                    )
+
                     Screen.History -> HistoryScreen(viewModel)
                     Screen.Categories -> CategoriesScreen(viewModel)
                     Screen.Tickets -> TicketsScreen(viewModel)

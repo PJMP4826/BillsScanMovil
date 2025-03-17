@@ -56,7 +56,7 @@ fun TicketsScreen(viewModel: SharedViewModel) {
                 onValueChange = { searchQuery = it },
                 modifier = Modifier
                     .weight(1f)
-                    .height(48.dp)
+                    .height(53.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .background(Color.White),
                 colors = TextFieldDefaults.colors(
@@ -76,7 +76,7 @@ fun TicketsScreen(viewModel: SharedViewModel) {
             Button(
                 onClick = { viewModel.updateSearchQuery(searchQuery) },
                 modifier = Modifier
-                    .height(48.dp)
+                    .height(52.dp)
                     .width(100.dp),
                 shape = RoundedCornerShape(24.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDAAA3F))

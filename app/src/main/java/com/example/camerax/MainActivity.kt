@@ -60,6 +60,7 @@ import com.example.camerax.navigation.AppNavigation
 import com.example.camerax.repositories.TicketRepository
 import com.example.camerax.viewmodels.SharedViewModel
 
+
 interface TicketApiService {
     @Multipart
     @POST("/procesar_ticket")
