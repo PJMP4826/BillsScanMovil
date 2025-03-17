@@ -1,6 +1,5 @@
 package com.example.camerax.viewmodels
 
-import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.camerax.models.Ticket
@@ -23,15 +22,14 @@ class SharedViewModel(private val repository: TicketRepository) : ViewModel() {
         _searchQuery.value = query
     }
 
-    fun addTicket(ticket: Ticket) {
+    fun addNewTicket(ticket: Ticket) {
         viewModelScope.launch {
             repository.addTicket(ticket)
         }
     }
 
-    fun addNewTicket(ticket: Ticket) {
-        viewModelScope.launch {
-            repository.addTicket(ticket)
-        }
+    // Método para refrescar tickets desde el almacenamiento
+    fun refreshTickets() {
+        repository.refreshTickets()
     }
 }

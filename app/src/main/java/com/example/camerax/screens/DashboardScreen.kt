@@ -35,9 +35,21 @@ import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.SCANNER
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import com.example.camerax.models.DetalleCompra
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.sp
+import com.example.camerax.R
 
 @Composable
 fun DashboardScreen(
@@ -51,6 +63,7 @@ fun DashboardScreen(
     val recentTickets by viewModel.recentTickets.collectAsState(initial = emptyList())
     var scannedImageUri by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var ticketResponse by remember { mutableStateOf<TicketResponse?>(null) }
+    var isProcessing by remember { mutableStateOf(false) }
 
     // Configurar MLKit Scanner
     val options = remember {
@@ -60,56 +73,97 @@ fun DashboardScreen(
             .setResultFormats(RESULT_FORMAT_JPEG)
             .build()
     }
-    
+
     val scanner = remember {
         GmsDocumentScanning.getClient(options)
     }
-    
+
+    // Modificación en el método processImage dentro de DashboardScreen.kt
+    fun processImage(imageUri: Uri, sourceFileName: String) {
+        Log.d("DashboardScreen", "Iniciando procesamiento de imagen: $sourceFileName")
+
+        // Guardar una copia del archivo en el almacenamiento interno
+        val destinationFile = File(context.filesDir, sourceFileName)
+
+        try {
+            context.contentResolver.openInputStream(imageUri)?.use { inputStream ->
+                FileOutputStream(destinationFile).use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+            Log.d("DashboardScreen", "Imagen copiada al almacenamiento interno: ${destinationFile.absolutePath}")
+
+            if (destinationFile.exists()) {
+                val requestFile = RequestBody.create("image/jpeg".toMediaTypeOrNull(), destinationFile)
+                val imagePart = MultipartBody.Part.createFormData("imagen", destinationFile.name, requestFile)
+
+                isProcessing = true
+
+                lifecycleScope.launch {
+                    try {
+                        Log.d("DashboardScreen", "Enviando imagen al servidor...")
+                        val response = apiService.uploadImage(imagePart)
+                        ticketResponse = response
+                        Log.d("DashboardScreen", "Respuesta recibida del servidor")
+
+                        response?.let {
+                            Log.d("DashboardScreen", "Guardando ticket en TicketDataStore")
+                            // Guardar en el TicketDataStore
+                            ticketDataStore.saveTicket(it, imageUri)
+
+                            // Crear objeto Ticket
+                            val newTicket = Ticket(
+                                empresa = it.resultado.encabezado.nombre_empresa,
+                                fecha = it.resultado.encabezado.fecha,
+                                hora = it.resultado.encabezado.hora,
+                                imageUri = imageUri.toString(),
+                                detalles = it.resultado.detalle_compra.map { detalle ->
+                                    DetalleCompra(
+                                        cantidad = detalle.cantidad,
+                                        descripcion = detalle.descripcion,
+                                        precioUnitario = detalle.precio_unitario,
+                                        subtotal = detalle.subtotal
+                                    )
+                                }
+                            )
+
+                            // Añadir al ViewModel
+                            viewModel.addNewTicket(newTicket)
+
+                            // Refrescar explícitamente los tickets
+                            viewModel.refreshTickets()
+
+                            Log.d("DashboardScreen", "Proceso completado. Ticket añadido y UI actualizada")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("UploadError", "Error al procesar la imagen: ${e.message}", e)
+                        Toast.makeText(context, "Error al procesar la imagen: ${e.message}", Toast.LENGTH_LONG).show()
+                    } finally {
+                        isProcessing = false
+                    }
+                }
+            } else {
+                Log.e("FileError", "El archivo de destino no existe")
+                Toast.makeText(context, "No se pudo guardar la imagen localmente", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            Log.e("FileError", "Error al guardar la imagen: ${e.message}", e)
+            Toast.makeText(context, "Error al guardar la imagen: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let { selectedUri ->
             scannedImageUri = listOf(selectedUri)
-            val imageFile = File(context.filesDir, "upload.jpg")
-            context.contentResolver.openInputStream(selectedUri)?.use { inputStream ->
-                FileOutputStream(imageFile).use { outputStream ->
-                    inputStream.copyTo(outputStream)
-                }
-            }
 
-            if (imageFile.exists()) {
-                val requestFile = RequestBody.create("image/jpeg".toMediaTypeOrNull(), imageFile)
-                val imagePart = MultipartBody.Part.createFormData("imagen", imageFile.name, requestFile)
+            // Generar un nombre de archivo único basado en timestamp
+            val timestamp = System.currentTimeMillis()
+            val fileName = "gallery_$timestamp.jpg"
 
-                lifecycleScope.launch {
-                    try {
-                        val response = apiService.uploadImage(imagePart)
-                        ticketResponse = response
-                        response?.let { 
-                            ticketDataStore.saveTicket(it, selectedUri)
-                            viewModel.addNewTicket(
-                                Ticket(
-                                    empresa = it.resultado.encabezado.nombre_empresa,
-                                    fecha = it.resultado.encabezado.fecha,
-                                    hora = it.resultado.encabezado.hora,
-                                    imageUri = selectedUri.toString(),
-                                    detalles = it.resultado.detalle_compra.map { detalle ->
-                                        DetalleCompra(
-                                            cantidad = detalle.cantidad,
-                                            descripcion = detalle.descripcion,
-                                            precioUnitario = detalle.precio_unitario,
-                                            subtotal = detalle.subtotal
-                                        )
-                                    }
-                                )
-                            )
-                        }
-                    } catch (e: Exception) {
-                        Log.e("UploadError", "Error al subir la imagen: ${e.message}")
-                        Toast.makeText(context, "Error al subir la imagen: ${e.message}", Toast.LENGTH_LONG).show()
-                    }
-                }
-            }
+            // Procesar la imagen usando la función común
+            processImage(selectedUri, fileName)
         }
     }
 
@@ -119,150 +173,218 @@ fun DashboardScreen(
     ) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             val scanningResult = GmsDocumentScanningResult.fromActivityResultIntent(result.data)
-            
+
             scanningResult?.pages?.firstOrNull()?.let { page ->
                 scannedImageUri = listOf(page.imageUri)
-                val imageFile = File(context.filesDir, "scan.jpg")
-                context.contentResolver.openInputStream(page.imageUri)?.use { inputStream ->
-                    FileOutputStream(imageFile).use { outputStream ->
-                        inputStream.copyTo(outputStream)
-                    }
-                }
 
-                if (imageFile.exists()) {
-                    val requestFile = RequestBody.create("image/jpeg".toMediaTypeOrNull(), imageFile)
-                    val imagePart = MultipartBody.Part.createFormData("imagen", imageFile.name, requestFile)
+                // Generar un nombre de archivo único basado en timestamp
+                val timestamp = System.currentTimeMillis()
+                val fileName = "scan_$timestamp.jpg"
 
-                    lifecycleScope.launch {
-                        try {
-                            val response = apiService.uploadImage(imagePart)
-                            ticketResponse = response
-                            response?.let { 
-                                ticketDataStore.saveTicket(it, page.imageUri)
-                                // Actualizar el ViewModel con el nuevo ticket
-                                viewModel.addNewTicket(
-                                    Ticket(
-                                        empresa = it.resultado.encabezado.nombre_empresa,
-                                        fecha = it.resultado.encabezado.fecha,
-                                        hora = it.resultado.encabezado.hora,
-                                        imageUri = page.imageUri.toString(),
-                                        detalles = it.resultado.detalle_compra.map { detalle ->
-                                            DetalleCompra(
-                                                cantidad = detalle.cantidad,
-                                                descripcion = detalle.descripcion,
-                                                precioUnitario = detalle.precio_unitario,
-                                                subtotal = detalle.subtotal
-                                            )
-                                        }
-                                    )
-                                )
-                            }
-                        } catch (e: Exception) {
-                            Log.e("UploadError", "Error al subir la imagen: ${e.message}")
-                            Toast.makeText(context, "Error al subir la imagen: ${e.message}", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                }
+                // Procesar la imagen usando la función común
+                processImage(page.imageUri, fileName)
             }
         }
     }
 
-    Column(
+    // Mostrar un diálogo de procesamiento mientras isProcessing es true
+    if (isProcessing) {
+        AlertDialog(
+            onDismissRequest = { /* No permitir cerrar */ },
+            title = { Text("Procesando...") },
+            text = { Text("Por favor espera mientras se procesa la imagen.") },
+            confirmButton = { /* Sin botón de confirmación */ }
+        )
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(Color(0xFFD3D3D3)),
+        contentAlignment = Alignment.Center
     ) {
-        // Action Buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+        // Main column containing both cards - centered and taking 80-85% of screen
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .fillMaxHeight(0.85f),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Button(
-                onClick = { galleryLauncher.launch("image/*") },
-                modifier = Modifier.weight(1f).padding(end = 8.dp)
+            // Top Cloud Icon and Buttons Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.33f),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Upload")
-            }
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(3.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    // Cloud Icon as IconButton
+                    IconButton(
+                        onClick = { galleryLauncher.launch("image/*") },
+                        modifier = Modifier.size(120.dp) // Control the touch target size
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.cloud),
+                            contentDescription = "Subir",
+                            modifier = Modifier.size(110.dp), // Control the visual size of the icon
+                            tint = Color.Black
+                        )
+                    }
 
-            Button(
-                onClick = { 
-                    scanner.getStartScanIntent(activity)  // Now using activity instead of context
-                        .addOnSuccessListener { intentSender ->
-                            scannerLauncher.launch(
-                                IntentSenderRequest.Builder(intentSender).build()
+                    Spacer(modifier = Modifier.height(8.dp)) // Reduced spacing between icon and buttons
+
+                    // Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(0.9f),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
+                    ) {
+                        // Escanear Button
+                        Button(
+                            onClick = {
+                                scanner.getStartScanIntent(activity)
+                                    .addOnSuccessListener { intentSender ->
+                                        scannerLauncher.launch(
+                                            IntentSenderRequest.Builder(intentSender).build()
+                                        )
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Toast.makeText(
+                                            context,
+                                            "Error al iniciar el escáner: ${e.message}",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDAAA3F)),
+                            shape = RoundedCornerShape(16.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp)
+                        ) {
+                            Text(
+                                "Escanear",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
                             )
                         }
-                        .addOnFailureListener { e ->
-                            Toast.makeText(
-                                context,
-                                "Error al iniciar el escáner: ${e.message}",
-                                Toast.LENGTH_SHORT
-                            ).show()
+
+                        // Cargar Button
+                        Button(
+                            onClick = {
+                                galleryLauncher.launch("image/*")
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDAAA3F)),
+                            shape = RoundedCornerShape(16.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp)
+                        ) {
+                            Text(
+                                "Cargar",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
                         }
-                },
-                modifier = Modifier.weight(1f).padding(start = 8.dp)
-            ) {
-                Text("Scan")
+                    }
+                }
             }
-        }
 
-        // Recent Files Section
-        Text(
-            "Recent Tickets",
-            style = MaterialTheme.typography.titleMedium
-        )
+            // Archivos Recientes Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(0.67f),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Archivos Recientes header
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp),
+                        color = Color(0xFF1F3E73),
+                        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Archivos Recientes",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
 
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(vertical = 8.dp)
-        ) {
-            items(recentTickets) { ticket ->
-                RecentTicketCard(ticket)
+                    // Grid of recent tickets
+                    if (recentTickets.isNotEmpty()) {
+                        LazyRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            items(recentTickets) { ticket ->
+                                RecentTicketThumbnail(ticket)
+                            }
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No hay archivos recientes",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecentTicketCard(ticket: Ticket) {
+fun RecentTicketThumbnail(ticket: Ticket) {
     Card(
         modifier = Modifier
-            .width(200.dp)
-            .height(200.dp)
+            .width(85.dp)
+            .height(230.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color.LightGray),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .padding(8.dp)
-                .fillMaxSize()
-        ) {
-            // Añadir imagen
-            AsyncImage(
-                model = Uri.parse(ticket.imageUri),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp),
-                contentScale = ContentScale.Crop
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = ticket.empresa,
-                style = MaterialTheme.typography.titleSmall
-            )
-            Text(
-                text = "Fecha: ${ticket.fecha}",
-                style = MaterialTheme.typography.bodySmall
-            )
-            Text(
-                text = "Total: $${ticket.total}",
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
+        AsyncImage(
+            model = Uri.parse(ticket.imageUri),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
     }
 }
