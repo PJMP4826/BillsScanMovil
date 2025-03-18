@@ -2,8 +2,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
 
-    alias(libs.plugins.compose.compiler)
-
     id("com.google.gms.google-services")
 }
 
@@ -83,7 +81,8 @@ dependencies {
     implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation ("com.google.code.gson:gson:2.8.8")
     implementation ("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0-beta1")
-    implementation(platform("com.google.firebase:firebase-bom:33.9.0"))
+    implementation(platform("com.google.firebase:firebase-bom:32.8.1"))
+    implementation ("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-analytics")
     implementation("androidx.compose.material3:material3:1.3.1")
     val nav_version = "2.8.8"

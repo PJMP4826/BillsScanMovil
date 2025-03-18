@@ -40,6 +40,7 @@ fun Registro(
     onUserChange: (String) -> Unit = {},
     onContraseñaChange: (String) -> Unit = {},
     onRegistroClcik: () -> Unit = {}
+
 ) {
     Box(modifier = Modifier.fillMaxSize()){
         Image(
