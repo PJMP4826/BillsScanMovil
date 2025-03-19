@@ -103,8 +103,8 @@ class MainActivity : ComponentActivity() {
             .build()
 
         val retrofit = Retrofit.Builder()
-            .baseUrl("http://192.168.100.56:5000") // Asegúrate de que esta sea la URL correcta
-            .client(client)  // Usar el cliente configurado con tiempos de espera
+            .baseUrl("http://3.147.172.159:8080") // endpoint apiTickets en AWS
+            .client(client)  
             .addConverterFactory(GsonConverterFactory.create())
             .build()
 
