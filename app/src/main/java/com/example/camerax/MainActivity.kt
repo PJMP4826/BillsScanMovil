@@ -95,16 +95,16 @@ class MainActivity : ComponentActivity() {
         val scanner = GmsDocumentScanning.getClient(options)
         val ticketDataStore = TicketDataStore(this)
 
-        // Configuración de Retrofit con Timeout extendido
+        // Configuracion de Retrofit con Timeout extendido
         val client = OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)  // Tiempo de espera para la conexión
-            .writeTimeout(30, TimeUnit.SECONDS)    // Tiempo de espera para la escritura
-            .readTimeout(30, TimeUnit.SECONDS)     // Tiempo de espera para leer la respuesta
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
             .build()
 
         val retrofit = Retrofit.Builder()
             .baseUrl("http://3.147.172.159:8080") // endpoint apiTickets en AWS
-            .client(client)  
+            .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
 

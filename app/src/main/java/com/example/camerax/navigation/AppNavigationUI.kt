@@ -1,11 +1,12 @@
 package com.example.camerax.navigation
 
-import android.widget.Toast
+import android.net.Uri
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,28 +18,10 @@ import androidx.lifecycle.LifecycleCoroutineScope
 import com.example.camerax.R
 import com.example.camerax.TicketApiService
 import com.example.camerax.TicketDataStore
+import com.example.camerax.TicketResponse
 import com.example.camerax.screens.*
 import com.example.camerax.viewmodels.SharedViewModel
-import androidx.activity.ComponentActivity
-import androidx.compose.foundation.shape.CircleShape
-import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
-import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
-import android.net.Uri
-import android.util.Log
-import kotlinx.coroutines.launch
-import java.io.File
-import java.io.FileOutputStream
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody
-import com.example.camerax.models.Ticket
-import com.example.camerax.models.DetalleCompra
-import com.example.camerax.TicketResponse
-
-enum class Screen {
-    Dashboard, History, Categories, Tickets
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,106 +34,12 @@ fun AppNavigation(
 ) {
     var isLoading by remember { mutableStateOf(true) }
     var currentScreen by remember { mutableStateOf(Screen.Dashboard) }
-
-    // Configurar MLKit Scanner
-    val options = remember {
-        GmsDocumentScannerOptions.Builder()
-            .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
-            .setPageLimit(1)
-            .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
-            .build()
-    }
-
-    val scanner = remember {
-        GmsDocumentScanning.getClient(options)
-    }
-
-    // Nueva variable para almacenar la URI de la imagen escaneada
     var scannedImageUri by remember { mutableStateOf<Uri?>(null) }
     var ticketResponse by remember { mutableStateOf<TicketResponse?>(null) }
     var isProcessing by remember { mutableStateOf(false) }
 
-    // Función para procesar la imagen
-    fun processImage(imageUri: Uri, sourceFileName: String) {
-        Log.d("AppNavigation", "Iniciando procesamiento de imagen: $sourceFileName")
-        val destinationFile = File(activity.filesDir, sourceFileName)
-
-        try {
-            activity.contentResolver.openInputStream(imageUri)?.use { inputStream ->
-                FileOutputStream(destinationFile).use { outputStream ->
-                    inputStream.copyTo(outputStream)
-                }
-            }
-            Log.d(
-                "AppNavigation",
-                "Imagen copiada al almacenamiento interno: ${destinationFile.absolutePath}"
-            )
-
-            if (destinationFile.exists()) {
-                val requestFile =
-                    RequestBody.create("image/jpeg".toMediaTypeOrNull(), destinationFile)
-                val imagePart =
-                    MultipartBody.Part.createFormData("imagen", destinationFile.name, requestFile)
-
-                isProcessing = true
-
-                lifecycleScope.launch {
-                    try {
-                        Log.d("AppNavigation", "Enviando imagen al servidor...")
-                        val response = apiService.uploadImage(imagePart)
-                        ticketResponse = response
-                        Log.d("AppNavigation", "Respuesta recibida del servidor")
-
-                        response?.let {
-                            Log.d("AppNavigation", "Guardando ticket en TicketDataStore")
-                            ticketDataStore.saveTicket(it, imageUri)
-
-                            val newTicket = Ticket(
-                                empresa = it.resultado.encabezado.nombre_empresa,
-                                fecha = it.resultado.encabezado.fecha,
-                                hora = it.resultado.encabezado.hora,
-                                imageUri = imageUri.toString(),
-                                detalles = it.resultado.detalle_compra.map { detalle ->
-                                    DetalleCompra(
-                                        cantidad = detalle.cantidad,
-                                        descripcion = detalle.descripcion,
-                                        precioUnitario = detalle.precio_unitario,
-                                        subtotal = detalle.subtotal
-                                    )
-                                }
-                            )
-
-                            viewModel.addNewTicket(newTicket)
-                            viewModel.refreshTickets()
-                            Log.d(
-                                "AppNavigation",
-                                "Proceso completado. Ticket añadido y UI actualizada"
-                            )
-                        }
-                    } catch (e: Exception) {
-                        Log.e("UploadError", "Error al procesar la imagen: ${e.message}", e)
-                        Toast.makeText(
-                            activity,
-                            "Error al procesar la imagen: ${e.message}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    } finally {
-                        isProcessing = false
-                    }
-                }
-            } else {
-                Log.e("FileError", "El archivo de destino no existe")
-                Toast.makeText(
-                    activity,
-                    "No se pudo guardar la imagen localmente",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        } catch (e: Exception) {
-            Log.e("FileError", "Error al guardar la imagen: ${e.message}", e)
-            Toast.makeText(activity, "Error al guardar la imagen: ${e.message}", Toast.LENGTH_SHORT)
-                .show()
-        }
+    val navigationController = remember {
+        AppNavigationController(viewModel, apiService, ticketDataStore, lifecycleScope, activity)
     }
 
     val scannerLauncher = rememberLauncherForActivityResult(
@@ -161,39 +50,42 @@ fun AppNavigation(
             scanningResult?.pages?.firstOrNull()?.let { page ->
                 scannedImageUri = page.imageUri
 
-                // Generar un nombre de archivo único basado en timestamp
                 val timestamp = System.currentTimeMillis()
                 val fileName = "scan_$timestamp.jpg"
 
-                // Procesar la imagen usando la función común
-                scannedImageUri?.let { uri -> processImage(uri, fileName) }
+                scannedImageUri?.let { uri ->
+                    navigationController.processImage(
+                        imageUri = uri,
+                        sourceFileName = fileName,
+                        onProcessingStateChange = { processing -> isProcessing = processing },
+                        onTicketProcessed = { response -> ticketResponse = response }
+                    )
+                }
             }
         }
     }
 
-    // Simula una pantalla de carga de 2 segundos
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(2000)
         isLoading = false
     }
 
-    // Mostrar un diálogo de procesamiento mientras isProcessing es true
+
     if (isProcessing) {
         AlertDialog(
             onDismissRequest = { /* No permitir cerrar */ },
             title = { Text("Procesando...") },
             text = { Text("Por favor espera mientras se procesa la imagen.") },
-            confirmButton = { /* Sin botón de confirmación */ }
+            confirmButton = {}
         )
     }
 
     Scaffold(
         bottomBar = {
-            if (!isLoading) {  // Ocultar barra de navegación mientras carga
+            if (!isLoading) {
                 NavigationBar(
                     containerColor = Color(0xFF2A4D8A)
                 ) {
-                    // First navigation item
                     NavigationBarItem(
                         selected = currentScreen == Screen.Dashboard,
                         onClick = { currentScreen = Screen.Dashboard },
@@ -215,7 +107,6 @@ fun AppNavigation(
                         )
                     )
 
-                    // Second navigation item
                     NavigationBarItem(
                         selected = currentScreen == Screen.History,
                         onClick = { currentScreen = Screen.History },
@@ -237,23 +128,12 @@ fun AppNavigation(
                         )
                     )
 
-                    // Center scan button (No se cambia)
                     NavigationBarItem(
                         selected = false,
                         onClick = {
-                            scanner.getStartScanIntent(activity)
-                                .addOnSuccessListener { intentSender ->
-                                    scannerLauncher.launch(
-                                        IntentSenderRequest.Builder(intentSender).build()
-                                    )
-                                }
-                                .addOnFailureListener { e ->
-                                    Toast.makeText(
-                                        activity,
-                                        "Error al iniciar el escáner: ${e.message}",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
+                            navigationController.launchScanner { request ->
+                                scannerLauncher.launch(request)
+                            }
                         },
                         icon = {
                             Box(
@@ -275,7 +155,6 @@ fun AppNavigation(
                         label = { Box(modifier = Modifier.height(16.dp)) {} }
                     )
 
-                    // Third navigation item
                     NavigationBarItem(
                         selected = currentScreen == Screen.Categories,
                         onClick = { currentScreen = Screen.Categories },
@@ -297,7 +176,6 @@ fun AppNavigation(
                         )
                     )
 
-                    // Fourth navigation item
                     NavigationBarItem(
                         selected = currentScreen == Screen.Tickets,
                         onClick = { currentScreen = Screen.Tickets },
