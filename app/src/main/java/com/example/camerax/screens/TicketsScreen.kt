@@ -2,6 +2,7 @@ package com.example.camerax.screens
 
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,7 +17,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import com.example.camerax.models.Ticket
 import com.example.camerax.viewmodels.SharedViewModel
 
 @Composable
@@ -24,10 +28,18 @@ fun TicketsScreen(viewModel: SharedViewModel) {
     var searchQuery by remember { mutableStateOf("") }
     val searchResults by viewModel.searchResults.collectAsState(initial = emptyList())
 
+    // State for tracking selected ticket for image and details modal
+    var selectedTicketImage by remember { mutableStateOf<String?>(null) }
+    var selectedTicketDetails by remember { mutableStateOf<Ticket?>(null) }
+
+    // Calculate total tickets and total spending
+    val totalTickets = searchResults.size
+    val totalSpending = searchResults.sumOf { it.total }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFE0E0E0)) // Fondo gris como en la imagen
+            .background(Color(0xFFE0E0E0))
             .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -42,7 +54,68 @@ fun TicketsScreen(viewModel: SharedViewModel) {
             color = Color.Black
         )
 
-        // Barra de búsqueda con botón
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .padding(bottom = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Total Tickets
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "Total de Tickets",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = "$totalTickets",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Color.Black
+                    )
+                }
+
+                Divider(
+                    modifier = Modifier
+                        .height(50.dp)
+                        .width(1.dp)
+                        .background(Color.LightGray)
+                )
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "Gasto Total",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = "$${String.format("%,.2f", totalSpending)}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Color.Black
+                    )
+                }
+            }
+        }
+
+        // Barra de búsqueda con boton
         Row(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
@@ -50,7 +123,6 @@ fun TicketsScreen(viewModel: SharedViewModel) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Campo de búsqueda
             TextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -68,11 +140,10 @@ fun TicketsScreen(viewModel: SharedViewModel) {
                     focusedTextColor = Color.Black,
                     unfocusedTextColor = Color.Black
                 ),
-                placeholder = { Text("", color = Color.Black) },
+                placeholder = { Text("Buscar por empresa, producto...", color = Color.Gray) },
                 singleLine = true
             )
 
-            // Botón de búsqueda
             Button(
                 onClick = { viewModel.updateSearchQuery(searchQuery) },
                 modifier = Modifier
@@ -109,21 +180,23 @@ fun TicketsScreen(viewModel: SharedViewModel) {
                             .fillMaxWidth()
                             .padding(bottom = 16.dp)
                     ) {
-                        // Imagen del ticket con mayor altura
+                        // Imagen del ticket con mayor altura y clickable
                         AsyncImage(
                             model = Uri.parse(ticket.imageUri),
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(400.dp), // Increased from 200dp to 250dp
+                                .height(400.dp)
+                                .clickable { selectedTicketImage = ticket.imageUri },
                             contentScale = ContentScale.Crop
                         )
 
-                        // Datos del ticket con fondo blanco
+                        // Datos del ticket con fondo blanco y clickable
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .clickable { selectedTicketDetails = ticket }
                         ) {
                             Text(
                                 text = ticket.empresa,
@@ -131,7 +204,6 @@ fun TicketsScreen(viewModel: SharedViewModel) {
                                 color = Color.Black
                             )
 
-                            // Fecha y hora con formato como en la imagen
                             Text(
                                 text = "Fecha: ${ticket.fecha}",
                                 fontWeight = FontWeight.Bold,
@@ -148,7 +220,6 @@ fun TicketsScreen(viewModel: SharedViewModel) {
 
                             Spacer(modifier = Modifier.height(4.dp))
 
-                            // Productos
                             Text(
                                 text = "Productos:",
                                 fontWeight = FontWeight.Bold,
@@ -156,7 +227,6 @@ fun TicketsScreen(viewModel: SharedViewModel) {
                                 color = Color.Black
                             )
 
-                            // Lista de productos
                             ticket.detalles.forEach { detalle ->
                                 Text(
                                     text = "${detalle.cantidad}x ${detalle.descripcion}",
@@ -167,13 +237,107 @@ fun TicketsScreen(viewModel: SharedViewModel) {
 
                             Spacer(modifier = Modifier.height(4.dp))
 
-                            // Total
                             Text(
                                 text = "Total: $${ticket.total}",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
                                 color = Color.Black
                             )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Modal
+        selectedTicketImage?.let { imageUri ->
+            Dialog(
+                onDismissRequest = { selectedTicketImage = null },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                AsyncImage(
+                    model = Uri.parse(imageUri),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .clip(RoundedCornerShape(16.dp)),
+                    contentScale = ContentScale.Fit
+                )
+            }
+        }
+
+        // Modal ticket informacion
+        selectedTicketDetails?.let { ticket ->
+            Dialog(
+                onDismissRequest = { selectedTicketDetails = null },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .clip(RoundedCornerShape(16.dp)),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Detalles del Ticket",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+
+                        Text(
+                            text = "Empresa: ${ticket.empresa}",
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        Text(
+                            text = "Fecha: ${ticket.fecha}",
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        Text(
+                            text = "Hora: ${ticket.hora}",
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+
+                        Text(
+                            text = "Productos:",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        ticket.detalles.forEach { detalle ->
+                            Text(
+                                text = "${detalle.cantidad}x ${detalle.descripcion} - $${detalle.subtotal}",
+                                fontSize = 16.sp,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                        }
+
+                        Text(
+                            text = "Total: $${ticket.total}",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            modifier = Modifier.padding(top = 16.dp)
+                        )
+
+                        Button(
+                            onClick = { selectedTicketDetails = null },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDAAA3F))
+                        ) {
+                            Text("Cerrar", color = Color.Black)
                         }
                     }
                 }

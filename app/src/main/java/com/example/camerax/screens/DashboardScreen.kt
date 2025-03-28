@@ -3,47 +3,120 @@ package com.example.camerax.screens
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import com.example.camerax.viewmodels.SharedViewModel
-import com.example.camerax.models.Ticket
-import androidx.lifecycle.LifecycleCoroutineScope
-import kotlinx.coroutines.launch
-import java.io.File
-import java.io.FileOutputStream
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody
-import com.example.camerax.TicketApiService
-import com.example.camerax.data.TicketDataStore
-import com.example.camerax.TicketResponse
-import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
-import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.RESULT_FORMAT_JPEG
-import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.SCANNER_MODE_FULL
-import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
-import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
-import androidx.activity.ComponentActivity
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import com.example.camerax.models.DetalleCompra
-import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.LifecycleCoroutineScope
+import coil.compose.AsyncImage
 import com.example.camerax.R
+import com.example.camerax.TicketApiService
+import com.example.camerax.TicketResponse
+import com.example.camerax.data.TicketDataStore
+import com.example.camerax.models.DetalleCompra
+import com.example.camerax.models.Ticket
+import com.example.camerax.viewmodels.SharedViewModel
+import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
+import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import java.io.File
+import java.io.FileOutputStream
+
+@Composable
+fun ImagePreviewDialog(
+    ticket: Ticket,
+    onDismiss: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.7f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .aspectRatio(3f / 4f)
+                .clip(RoundedCornerShape(16.dp)),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Image display
+                AsyncImage(
+                    model = Uri.parse(ticket.imageUri),
+                    contentDescription = "Ticket Image Preview",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+
+                // Close button
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .background(Color.White.copy(alpha = 0.7f), shape = CircleShape)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close Preview",
+                        tint = Color.Black
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RecentTicketThumbnail(
+    ticket: Ticket,
+    onImageClick: (Ticket) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .width(85.dp)
+            .height(230.dp)
+            .clickable { onImageClick(ticket) },
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color.LightGray),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        AsyncImage(
+            model = Uri.parse(ticket.imageUri),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+    }
+}
 
 @Composable
 fun DashboardScreen(
@@ -58,13 +131,14 @@ fun DashboardScreen(
     var scannedImageUri by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var ticketResponse by remember { mutableStateOf<TicketResponse?>(null) }
     var isProcessing by remember { mutableStateOf(false) }
+    var selectedTicketForPreview by remember { mutableStateOf<Ticket?>(null) }
 
     // Configurar MLKit Scanner
     val options = remember {
         GmsDocumentScannerOptions.Builder()
-            .setScannerMode(SCANNER_MODE_FULL)
+            .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
             .setPageLimit(1)
-            .setResultFormats(RESULT_FORMAT_JPEG)
+            .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
             .build()
     }
 
@@ -197,7 +271,6 @@ fun DashboardScreen(
             .background(Color(0xFFD3D3D3)),
         contentAlignment = Alignment.Center
     ) {
-        // Main column containing both cards - centered and taking 80-85% of screen
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.8f)
@@ -205,7 +278,6 @@ fun DashboardScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Top Cloud Icon and Buttons Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -221,20 +293,19 @@ fun DashboardScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Cloud Icon as IconButton
                     IconButton(
                         onClick = { galleryLauncher.launch("image/*") },
-                        modifier = Modifier.size(120.dp) // Control the touch target size
+                        modifier = Modifier.size(120.dp)
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.cloud),
                             contentDescription = "Subir",
-                            modifier = Modifier.size(110.dp), // Control the visual size of the icon
+                            modifier = Modifier.size(110.dp),
                             tint = Color.Black
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp)) // Reduced spacing between icon and buttons
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Buttons
                     Row(
@@ -272,7 +343,6 @@ fun DashboardScreen(
                                 color = Color.White
                             )
                         }
-
                     }
                 }
             }
@@ -312,7 +382,6 @@ fun DashboardScreen(
                         }
                     }
 
-                    // Grid of recent tickets
                     if (recentTickets.isNotEmpty()) {
                         LazyRow(
                             modifier = Modifier
@@ -324,7 +393,12 @@ fun DashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             items(recentTickets) { ticket ->
-                                RecentTicketThumbnail(ticket)
+                                RecentTicketThumbnail(
+                                    ticket = ticket,
+                                    onImageClick = { selectedTicket ->
+                                        selectedTicketForPreview = selectedTicket
+                                    }
+                                )
                             }
                         }
                     } else {
@@ -342,24 +416,14 @@ fun DashboardScreen(
                 }
             }
         }
-    }
-}
 
-@Composable
-fun RecentTicketThumbnail(ticket: Ticket) {
-    Card(
-        modifier = Modifier
-            .width(85.dp)
-            .height(230.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, Color.LightGray),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        AsyncImage(
-            model = Uri.parse(ticket.imageUri),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
+        selectedTicketForPreview?.let { ticket ->
+            ImagePreviewDialog(
+                ticket = ticket,
+                onDismiss = {
+                    selectedTicketForPreview = null
+                }
+            )
+        }
     }
 }
