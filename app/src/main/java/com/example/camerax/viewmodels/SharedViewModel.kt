@@ -18,6 +18,10 @@ class SharedViewModel(private val repository: TicketRepository) : ViewModel() {
         repository.searchTickets(query)
     }
 
+    init {
+        refreshTickets()
+    }
+
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
     }
@@ -28,7 +32,6 @@ class SharedViewModel(private val repository: TicketRepository) : ViewModel() {
         }
     }
 
-    // Método para refrescar tickets desde el almacenamiento
     fun refreshTickets() {
         repository.refreshTickets()
     }

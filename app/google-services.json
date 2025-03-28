@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "454816826562",
+    "firebase_url": "https://billsscanmovil-9dee5-default-rtdb.firebaseio.com",
+    "project_id": "billsscanmovil-9dee5",
+    "storage_bucket": "billsscanmovil-9dee5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:454816826562:android:1ab1e6708db77be2bc675b",
+        "android_client_info": {
+          "package_name": "com.example.camerax"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAX0m57hCfH9YyEKCFwVsqvswod0t-AKgg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

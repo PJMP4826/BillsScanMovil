@@ -2,9 +2,10 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
 
+    id("com.google.gms.google-services")
+
     //id("com.android.application")
     //id("org.jetbrains.kotlin.android")
-    //id("com.google.gms.google-services")
 }
 
 android {
@@ -77,6 +78,7 @@ dependencies {
     implementation(libs.androidx.navigation.runtime.android)
     implementation(libs.navigation.compose)
     implementation(libs.androidx.navigation.runtime.ktx)
+    implementation(libs.google.firebase.firestore.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -92,6 +94,16 @@ dependencies {
     //implementation("com.google.firebase:firebase-auth-ktx:23.2.0")
     //implementation("com.google.firebase:firebase-firestore-ktx:25.1.2")
     //implementation("com.google.firebase:firebase-common-ktx:21.0.0")
+
+    //Real time
+    // Import the BoM for the Firebase platform
+    implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
+
+    // Add the dependency for the Realtime Database library
+    // When using the BoM, you don't specify versions in Firebase library dependencies
+    implementation("com.google.firebase:firebase-database")
+    implementation("com.google.firebase:firebase-analytics")
+
 
 
 }

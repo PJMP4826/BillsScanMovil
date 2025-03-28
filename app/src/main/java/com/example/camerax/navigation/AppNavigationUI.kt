@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LifecycleCoroutineScope
 import com.example.camerax.R
 import com.example.camerax.TicketApiService
-import com.example.camerax.TicketDataStore
+import com.example.camerax.data.TicketDataStore
 import com.example.camerax.TicketResponse
 import com.example.camerax.screens.*
 import com.example.camerax.viewmodels.SharedViewModel

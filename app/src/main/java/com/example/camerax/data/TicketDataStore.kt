@@ -1,9 +1,10 @@
-package com.example.camerax
+package com.example.camerax.data
 
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import android.util.Log
+import com.example.camerax.TicketResponse
 import com.example.camerax.models.DetalleCompra
 import com.example.camerax.models.Ticket
 import com.google.gson.Gson

@@ -1,18 +1,26 @@
 package com.example.camerax.models
 
-data class Ticket(
-    val id: String = System.currentTimeMillis().toString(),
-    val empresa: String,
-    val fecha: String,
-    val hora: String,
-    val imageUri: String,
-    val detalles: List<DetalleCompra>,
-    val total: Double = detalles.sumOf { it.subtotal }
-)
+import com.google.firebase.database.IgnoreExtraProperties
 
+@IgnoreExtraProperties
+data class Ticket(
+    var id: String = System.currentTimeMillis().toString(),
+    var empresa: String = "",
+    var fecha: String = "",
+    var hora: String = "",
+    var imageUri: String = "",
+    var detalles: List<DetalleCompra> = emptyList(),
+    var total: Double = 0.0
+) {
+    fun calcularTotal() {
+        total = detalles.sumOf { it.subtotal }
+    }
+}
+
+@IgnoreExtraProperties
 data class DetalleCompra(
-    val cantidad: Int,
-    val descripcion: String,
-    val precioUnitario: Double,
-    val subtotal: Double
+    var cantidad: Int = 0,
+    var descripcion: String = "",
+    var precioUnitario: Double = 0.0,
+    var subtotal: Double = 0.0
 )

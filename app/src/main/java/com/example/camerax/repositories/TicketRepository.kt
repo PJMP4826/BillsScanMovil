@@ -2,21 +2,29 @@ package com.example.camerax.repositories
 
 import android.content.Context
 import android.util.Log
-import com.example.camerax.TicketDataStore
+import com.example.camerax.data.TicketDataStore
+import com.example.camerax.data.TicketRemoteStore
 import com.example.camerax.models.Ticket
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 
 class TicketRepository(private val context: Context) {
     private val ticketDataStore = TicketDataStore(context)
-    private val tickets = MutableStateFlow<List<Ticket>>(loadTickets())
+    private val ticketRemoteStore = TicketRemoteStore()
+    private val tickets = MutableStateFlow<List<Ticket>>(emptyList())
 
-    private fun loadTickets(): List<Ticket> {
+    init {
+        loadTickets()
+    }
+
+    private fun loadTickets() {
         val savedTickets = ticketDataStore.getSavedTickets()
-        Log.d("TicketRepository", "Cargados ${savedTickets.size} tickets desde TicketDataStore")
-        return savedTickets
+        tickets.value = savedTickets
+        Log.d("TicketRepository", "Cargados ${savedTickets.size} tickets desde almacenamiento local")
+
+        ticketRemoteStore.getAllTickets { remoteTickets ->
+            tickets.value = remoteTickets
+            Log.d("TicketRepository", "Cargados ${remoteTickets.size} tickets desde Firebase")
+        }
     }
 
     fun getAllTickets(): Flow<List<Ticket>> = tickets
@@ -31,39 +39,27 @@ class TicketRepository(private val context: Context) {
 
     fun searchTickets(query: String): Flow<List<Ticket>> =
         tickets.map { ticketList ->
-            ticketList.filter {
-                it.empresa.contains(query, ignoreCase = true)
-            }
+            ticketList.filter { it.empresa.contains(query, ignoreCase = true) }
         }
 
     suspend fun addTicket(ticket: Ticket) {
         Log.d("TicketRepository", "Añadiendo ticket para: ${ticket.empresa}")
 
-        // Actualizar el StateFlow
-        tickets.update { currentList ->
-            val mutableList = currentList.toMutableList()
+        // Guardar en Firebase
+        ticketRemoteStore.saveTicket(ticket)
 
-            // Evitar duplicados
-            val existingIndex = mutableList.indexOfFirst { it.imageUri == ticket.imageUri }
-            if (existingIndex != -1) {
-                Log.d("TicketRepository", "Actualizando ticket existente")
-                mutableList[existingIndex] = ticket
-            } else {
-                Log.d("TicketRepository", "Añadiendo nuevo ticket")
-                mutableList.add(0, ticket)
-            }
-            mutableList
-        }
-
-        // Guardar en el TicketDataStore también
+        // Guardar en local
         ticketDataStore.saveTicketObject(ticket)
+
+        // Actualizar flujo de datos en memoria
+        tickets.update { currentList -> listOf(ticket) + currentList }
     }
 
-    // Método para recargar tickets desde el TicketDataStore
     fun refreshTickets() {
-        Log.d("TicketRepository", "Refrescando tickets desde almacenamiento")
-        val loadedTickets = ticketDataStore.getSavedTickets()
-        tickets.value = loadedTickets
-        Log.d("TicketRepository", "Tickets refrescados: ${loadedTickets.size}")
+        Log.d("TicketRepository", "Refrescando tickets desde Firebase")
+        ticketRemoteStore.getAllTickets { remoteTickets ->
+            tickets.value = remoteTickets
+            Log.d("TicketRepository", "Tickets actualizados: ${remoteTickets.size}")
+        }
     }
 }
