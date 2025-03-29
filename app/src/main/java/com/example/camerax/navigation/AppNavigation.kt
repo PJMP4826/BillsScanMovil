@@ -6,9 +6,9 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.result.IntentSenderRequest
 import androidx.lifecycle.LifecycleCoroutineScope
-import com.example.camerax.TicketApiService
+import com.example.camerax.config.TicketApiService
 import com.example.camerax.data.TicketDataStore
-import com.example.camerax.TicketResponse
+import com.example.camerax.models.TicketResponse
 import com.example.camerax.models.DetalleCompra
 import com.example.camerax.models.Ticket
 import com.example.camerax.viewmodels.SharedViewModel

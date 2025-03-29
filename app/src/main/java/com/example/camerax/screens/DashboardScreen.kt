@@ -32,8 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LifecycleCoroutineScope
 import coil.compose.AsyncImage
 import com.example.camerax.R
-import com.example.camerax.TicketApiService
-import com.example.camerax.TicketResponse
+import com.example.camerax.config.TicketApiService
+import com.example.camerax.models.TicketResponse
 import com.example.camerax.data.TicketDataStore
 import com.example.camerax.models.DetalleCompra
 import com.example.camerax.models.Ticket

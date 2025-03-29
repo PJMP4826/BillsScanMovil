@@ -13,7 +13,12 @@
           "package_name": "com.example.camerax"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "454816826562-9c9hg3os8l7maugij65oscf8v4hsqenj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAX0m57hCfH9YyEKCFwVsqvswod0t-AKgg"
@@ -21,7 +26,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "454816826562-9c9hg3os8l7maugij65oscf8v4hsqenj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

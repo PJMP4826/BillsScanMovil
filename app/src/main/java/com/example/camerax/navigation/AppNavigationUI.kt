@@ -16,9 +16,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LifecycleCoroutineScope
 import com.example.camerax.R
-import com.example.camerax.TicketApiService
+import com.example.camerax.config.TicketApiService
 import com.example.camerax.data.TicketDataStore
-import com.example.camerax.TicketResponse
+import com.example.camerax.models.TicketResponse
 import com.example.camerax.screens.*
 import com.example.camerax.viewmodels.SharedViewModel
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult

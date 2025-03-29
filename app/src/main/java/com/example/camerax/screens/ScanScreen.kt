@@ -12,7 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import coil.compose.AsyncImage
 import com.example.camerax.R
-import com.example.camerax.TicketResponse
+import com.example.camerax.models.TicketResponse
 import android.net.Uri
 
 @Composable
