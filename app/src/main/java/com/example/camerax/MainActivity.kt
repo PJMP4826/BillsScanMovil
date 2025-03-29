@@ -20,12 +20,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val db = FirebaseFirestore.getInstance()
-        val ajustes = FirebaseFirestoreSettings.Builder()
-            .setLocalCacheSettings(PersistentCacheSettings.newBuilder().build())
-            .build()
-        db.firestoreSettings = ajustes
-
         enableEdgeToEdge()
 
         setContent {
