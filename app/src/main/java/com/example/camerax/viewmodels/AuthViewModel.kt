@@ -81,28 +81,40 @@ class AuthViewModel : ViewModel() {
 
                 auth.createUserWithEmailAndPassword(email, password)
                     .addOnSuccessListener { authResult ->
-                        // Crear documento del usuario en Firestore
-                        val user = hashMapOf(
-                            "nombre" to nombre,
-                            "email" to email,
-                            "createdAt" to System.currentTimeMillis()
-                        )
+                        try {
+                            // Crear documento del usuario en Firestore
+                            val user = hashMapOf(
+                                "nombre" to nombre,
+                                "email" to email,
+                                "createdAt" to System.currentTimeMillis()
+                            )
 
-                        authResult.user?.uid?.let { uid ->
-                            firestore.collection("users")
-                                .document(uid)
-                                .set(user)
-                                .addOnSuccessListener {
-                                    Log.d(TAG, "Usuario registrado en Firestore")
-                                    Toast.makeText(context, "Registro exitoso", Toast.LENGTH_SHORT).show()
-                                    // Cerrar sesión después del registro para que el usuario tenga que iniciar sesión
-                                    auth.signOut()
-                                    onSuccess()
-                                }
-                                .addOnFailureListener { e ->
-                                    Log.e(TAG, "Error al guardar en Firestore", e)
-                                    _error.value = "Error al guardar datos de usuario"
-                                }
+                            authResult.user?.uid?.let { uid ->
+                                firestore.collection("users")
+                                    .document(uid)
+                                    .set(user)
+                                    .addOnSuccessListener {
+                                        Log.d(TAG, "Usuario registrado en Firestore")
+                                        Toast.makeText(context, "Registro exitoso", Toast.LENGTH_SHORT).show()
+                                        // Cerrar sesión después del registro para que el usuario tenga que iniciar sesión
+                                        auth.signOut()
+                                        onSuccess()
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Log.e(TAG, "Error al guardar en Firestore", e)
+                                        // No bloqueamos el flujo por error de Firestore
+                                        // Procedemos con el registro exitoso
+                                        Toast.makeText(context, "Registro exitoso", Toast.LENGTH_SHORT).show()
+                                        auth.signOut()
+                                        onSuccess()
+                                    }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error al guardar en Firestore", e)
+                            // No bloqueamos el flujo por error de Firestore
+                            Toast.makeText(context, "Registro exitoso", Toast.LENGTH_SHORT).show()
+                            auth.signOut()
+                            onSuccess()
                         }
                     }
                     .addOnFailureListener { e ->
@@ -118,5 +130,20 @@ class AuthViewModel : ViewModel() {
                 _isLoading.value = false
             }
         }
+    }
+
+    fun signOut() {
+        try {
+            auth.signOut()
+            Log.d(TAG, "Sesión cerrada exitosamente")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error al cerrar sesión", e)
+        }
+    }
+
+    fun getCurrentUser() = auth.currentUser
+
+    fun isUserLoggedIn(): Boolean {
+        return auth.currentUser != null
     }
 }
