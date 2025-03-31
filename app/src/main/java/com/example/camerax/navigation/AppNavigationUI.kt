@@ -9,6 +9,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavHostController
 import com.example.camerax.R
 import com.example.camerax.config.TicketApiService
@@ -45,7 +46,12 @@ fun AppNavigation(
                 NavigationBarItem(
                     selected = currentScreen == Screen.Dashboard,
                     onClick = { currentScreen = Screen.Dashboard },
-                    label = { Text("Inicio") },
+                    label = {
+                        Text(
+                            "Inicio",
+                            fontWeight = if (currentScreen == Screen.Dashboard) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
                     icon = {
                         Icon(
                             painter = painterResource(id = R.drawable.home2),
@@ -54,19 +60,23 @@ fun AppNavigation(
                         )
                     },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Color(0xFFDAAA3F),
+                        selectedIconColor = Color.Black,
                         selectedTextColor = Color(0xFFDAAA3F),
                         unselectedIconColor = Color.Black,
                         unselectedTextColor = Color.Black,
-                        indicatorColor = Color(0xFF162C55) // Azul más oscuro
-
+                        indicatorColor = Color(0xFFDAAA3F)
                     )
                 )
 
                 NavigationBarItem(
                     selected = currentScreen == Screen.History,
                     onClick = { currentScreen = Screen.History },
-                    label = { Text("Historial") },
+                    label = {
+                        Text(
+                            "Historial",
+                            fontWeight = if (currentScreen == Screen.History) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
                     icon = {
                         Icon(
                             painter = painterResource(id = R.drawable.history),
@@ -75,19 +85,23 @@ fun AppNavigation(
                         )
                     },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Color(0xFFDAAA3F),
+                        selectedIconColor = Color.Black,
                         selectedTextColor = Color(0xFFDAAA3F),
                         unselectedIconColor = Color.Black,
                         unselectedTextColor = Color.Black,
-                        indicatorColor = Color(0xFF162C55) // Azul más oscuro
-
+                        indicatorColor = Color(0xFFDAAA3F)
                     )
                 )
 
                 NavigationBarItem(
                     selected = currentScreen == Screen.Categories,
                     onClick = { currentScreen = Screen.Categories },
-                    label = { Text("Grupo") },
+                    label = {
+                        Text(
+                            "Grupo",
+                            fontWeight = if (currentScreen == Screen.Categories) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
                     icon = {
                         Icon(
                             painter = painterResource(id = R.drawable.categorias),
@@ -96,19 +110,23 @@ fun AppNavigation(
                         )
                     },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Color(0xFFDAAA3F),
+                        selectedIconColor = Color.Black,
                         selectedTextColor = Color(0xFFDAAA3F),
                         unselectedIconColor = Color.Black,
                         unselectedTextColor = Color.Black,
-                        indicatorColor = Color(0xFF162C55) // Azul más oscuro
-
+                        indicatorColor = Color(0xFFDAAA3F)
                     )
                 )
 
                 NavigationBarItem(
                     selected = currentScreen == Screen.Tickets,
                     onClick = { currentScreen = Screen.Tickets },
-                    label = { Text("Tickets") },
+                    label = {
+                        Text(
+                            "Tickets",
+                            fontWeight = if (currentScreen == Screen.Tickets) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
                     icon = {
                         Icon(
                             painter = painterResource(id = R.drawable.bills),
@@ -117,12 +135,11 @@ fun AppNavigation(
                         )
                     },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = Color(0xFFDAAA3F),
+                        selectedIconColor = Color.Black,
                         selectedTextColor = Color(0xFFDAAA3F),
                         unselectedIconColor = Color.Black,
                         unselectedTextColor = Color.Black,
-                        indicatorColor = Color(0xFF162C55) // Azul más oscuro
-
+                        indicatorColor = Color(0xFFDAAA3F)
                     )
                 )
             }
@@ -143,4 +160,5 @@ fun AppNavigation(
             }
         }
     }
+
 }
