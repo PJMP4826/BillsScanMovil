@@ -14,7 +14,7 @@ navigationCompose = "2.8.8"
 navigationComposeVersion = "2.8.9"
 navigationRuntimeKtx = "2.8.9"
 firebaseCommonKtx = "21.0.0"
-firebaseAuthKtx = "23.2.0"
+firebaseAuthKtx = "22.3.1"
 firebaseFirestoreKtx = "25.1.2"
 firebaseFirestoreKtxVersion = "25.1.3"
 

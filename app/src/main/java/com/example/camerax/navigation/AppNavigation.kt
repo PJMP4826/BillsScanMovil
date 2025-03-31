@@ -21,9 +21,7 @@ import okhttp3.RequestBody
 import java.io.File
 import java.io.FileOutputStream
 
-enum class Screen {
-    Dashboard, History, Categories, Tickets
-}
+
 
 
 class AppNavigationController(
