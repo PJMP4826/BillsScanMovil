@@ -105,8 +105,7 @@ fun Auth(navHostController: NavHostController, viewModel: AuthViewModel) {
                         onValueChange = { email = it },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 16.dp)
-                            .height(56.dp),
+                            .padding(bottom = 16.dp),
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = Color.White,
@@ -115,7 +114,9 @@ fun Auth(navHostController: NavHostController, viewModel: AuthViewModel) {
                             focusedBorderColor = Color.Transparent,
                             unfocusedBorderColor = Color.Transparent
                         ),
-                        placeholder = { Text("Ingrese su correo") }
+                        placeholder = { Text("Ingrese su correo") },
+                        textStyle = MaterialTheme.typography.bodyLarge,
+                        singleLine = true
                     )
 
                     // Campo de contraseña
@@ -133,8 +134,7 @@ fun Auth(navHostController: NavHostController, viewModel: AuthViewModel) {
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 24.dp)
-                            .height(56.dp),
+                            .padding(bottom = 24.dp),
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = Color.White,
@@ -143,7 +143,9 @@ fun Auth(navHostController: NavHostController, viewModel: AuthViewModel) {
                             focusedBorderColor = Color.Transparent,
                             unfocusedBorderColor = Color.Transparent
                         ),
-                        placeholder = { Text("Ingrese su contraseña") }
+                        placeholder = { Text("Ingrese su contraseña") },
+                        textStyle = MaterialTheme.typography.bodyLarge,
+                        singleLine = true
                     )
 
                     // Mostrar error si existe

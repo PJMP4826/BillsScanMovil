@@ -293,17 +293,12 @@ fun DashboardScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    IconButton(
-                        onClick = { galleryLauncher.launch("image/*") },
-                        modifier = Modifier.size(120.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.cloud),
-                            contentDescription = "Subir",
-                            modifier = Modifier.size(110.dp),
-                            tint = Color.Black
-                        )
-                    }
+                    Icon(
+                        painter = painterResource(id = R.drawable.cloud),
+                        contentDescription = "Subir",
+                        modifier = Modifier.size(100.dp),
+                        tint = Color.Black
+                    )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
