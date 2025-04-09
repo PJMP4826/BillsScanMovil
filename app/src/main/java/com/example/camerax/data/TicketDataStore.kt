@@ -91,11 +91,11 @@ class TicketDataStore(context: Context) {
             }
 
             val type = object : TypeToken<List<Ticket>>() {}.type
-            val result = gson.fromJson<List<Ticket>>(json, type)
-            Log.d("TicketDataStore", "Tickets recuperados: ${result.size}")
-            return result
+            return gson.fromJson<List<Ticket>>(json, type).map { ticket ->
+                ticket.apply { calcularTotal() }
+            }.sortedByDescending { it.id } // Ordenar por ID (más reciente primero)
         } catch (e: Exception) {
-            Log.e("TicketDataStore", "Error al recuperar tickets: ${e.message}", e)
+            Log.e("TicketDataStore", "Error al recuperar tickets: ${e.message}")
             return emptyList()
         }
     }
@@ -125,5 +125,25 @@ class TicketDataStore(context: Context) {
     fun clearAllData() {
         prefs.edit().clear().apply()
         Log.d("TicketDataStore", "Todos los datos borrados")
+    }
+
+    fun deleteTicket(ticket: Ticket) {
+        try {
+            // Obtener la lista actual de tickets
+            val ticketsList = getSavedTickets().toMutableList()
+            ticketsList.removeIf { it.id == ticket.id }
+            
+            // Guardar la lista actualizada
+            prefs.edit().putString("saved_tickets", gson.toJson(ticketsList)).apply()
+            
+            // Eliminar la imagen asociada del mapeo
+            val ticketImages = getTicketImages().toMutableMap()
+            ticketImages.remove(ticket.empresa)
+            prefs.edit().putString("ticket_images", gson.toJson(ticketImages)).apply()
+            
+            Log.d("TicketDataStore", "Ticket eliminado con éxito")
+        } catch (e: Exception) {
+            Log.e("TicketDataStore", "Error al eliminar ticket: ${e.message}")
+        }
     }
 }

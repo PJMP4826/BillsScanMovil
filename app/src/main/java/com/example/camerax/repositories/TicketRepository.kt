@@ -17,13 +17,23 @@ class TicketRepository(private val context: Context) {
     }
 
     private fun loadTickets() {
+        // Primero cargar datos locales
         val savedTickets = ticketDataStore.getSavedTickets()
         tickets.value = savedTickets
         Log.d("TicketRepository", "Cargados ${savedTickets.size} tickets desde almacenamiento local")
 
+        // Luego cargar datos de Firebase y combinar
         ticketRemoteStore.getAllTickets { remoteTickets ->
-            tickets.value = remoteTickets
-            Log.d("TicketRepository", "Cargados ${remoteTickets.size} tickets desde Firebase")
+            val combinedTickets = (remoteTickets + savedTickets)
+                .distinctBy { it.id }  // Eliminar duplicados
+                .sortedByDescending { it.id }  // Ordenar por más reciente
+            tickets.value = combinedTickets
+            
+            // Sincronizar con almacenamiento local
+            combinedTickets.forEach { ticket ->
+                ticketDataStore.saveTicketObject(ticket)
+            }
+            Log.d("TicketRepository", "Sincronizados ${combinedTickets.size} tickets")
         }
     }
 
@@ -55,11 +65,52 @@ class TicketRepository(private val context: Context) {
         tickets.update { currentList -> listOf(ticket) + currentList }
     }
 
+    suspend fun deleteTicket(ticket: Ticket) {
+        // Eliminar de Firebase
+        ticketRemoteStore.deleteTicket(ticket.id)
+
+        // Eliminar de local storage
+        ticketDataStore.deleteTicket(ticket)
+
+        // Eliminar de la memoria
+        val currentTickets = tickets.value.toMutableList()
+        currentTickets.remove(ticket)
+        tickets.value = currentTickets
+
+        Log.d("TicketRepository", "Ticket eliminado completamente")
+    }
+
+    suspend fun updateTicket(ticket: Ticket) {
+        // Actualizar en Firebase
+        ticketRemoteStore.updateTicket(ticket)
+
+        // Actualizar en memoria
+        val currentTickets = tickets.value.toMutableList()
+        val index = currentTickets.indexOfFirst { it.id == ticket.id }
+        if (index != -1) {
+            currentTickets[index] = ticket
+            tickets.value = currentTickets
+        }
+
+        // Actualizar local storage
+        ticketDataStore.saveTicketObject(ticket)
+    }
+
     fun refreshTickets() {
-        Log.d("TicketRepository", "Refrescando tickets desde Firebase")
+        Log.d("TicketRepository", "Refrescando tickets")
+        val localTickets = ticketDataStore.getSavedTickets()
+        
         ticketRemoteStore.getAllTickets { remoteTickets ->
-            tickets.value = remoteTickets
-            Log.d("TicketRepository", "Tickets actualizados: ${remoteTickets.size}")
+            val combinedTickets = (remoteTickets + localTickets)
+                .distinctBy { it.id }
+                .sortedByDescending { it.id }
+            tickets.value = combinedTickets
+            
+            // Actualizar almacenamiento local
+            combinedTickets.forEach { ticket ->
+                ticketDataStore.saveTicketObject(ticket)
+            }
+            Log.d("TicketRepository", "Tickets actualizados: ${combinedTickets.size}")
         }
     }
 }

@@ -15,19 +15,14 @@ class SharedViewModel(private val repository: TicketRepository) : ViewModel() {
     val allTickets = repository.getAllTickets()
     val categorizedTickets = repository.getTicketsByCategory()
 
-    // Modified search results to include more comprehensive search
     val searchResults = searchQuery.flatMapLatest { query ->
         if (query.isBlank()) {
-            // When query is empty, return all tickets
             repository.getAllTickets()
         } else {
-            // Create a flow that searches across multiple fields
             flow {
                 val allTicketsList = repository.getAllTickets().first()
                 val filteredTickets = allTicketsList.filter { ticket ->
-                    // Search in company name
                     ticket.empresa.contains(query, ignoreCase = true) ||
-                            // Search in product names
                             ticket.detalles.any {
                                 it.descripcion.contains(query, ignoreCase = true)
                             }
@@ -53,5 +48,17 @@ class SharedViewModel(private val repository: TicketRepository) : ViewModel() {
 
     fun refreshTickets() {
         repository.refreshTickets()
+    }
+
+    fun deleteTicket(ticket: Ticket) {
+        viewModelScope.launch {
+            repository.deleteTicket(ticket)
+        }
+    }
+
+    fun updateTicket(ticket: Ticket) {
+        viewModelScope.launch {
+            repository.updateTicket(ticket)
+        }
     }
 }

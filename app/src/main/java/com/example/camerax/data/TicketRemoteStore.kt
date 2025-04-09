@@ -15,7 +15,6 @@ class TicketRemoteStore {
             .addOnFailureListener { e -> Log.e("TicketRemoteStore", "Error al guardar en Firebase", e) }
     }
 
-
     fun getAllTickets(onResult: (List<Ticket>) -> Unit) {
         database.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -31,5 +30,16 @@ class TicketRemoteStore {
         })
     }
 
+    fun deleteTicket(ticketId: String) {
+        database.child(ticketId).removeValue()
+            .addOnSuccessListener { Log.d("TicketRemoteStore", "Ticket eliminado de Firebase") }
+            .addOnFailureListener { e -> Log.e("TicketRemoteStore", "Error al eliminar de Firebase", e) }
+    }
 
+    fun updateTicket(ticket: Ticket) {
+        ticket.calcularTotal()
+        database.child(ticket.id).setValue(ticket)
+            .addOnSuccessListener { Log.d("TicketRemoteStore", "Ticket actualizado en Firebase") }
+            .addOnFailureListener { e -> Log.e("TicketRemoteStore", "Error al actualizar en Firebase", e) }
+    }
 }

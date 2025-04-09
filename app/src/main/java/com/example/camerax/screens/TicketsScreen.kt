@@ -32,6 +32,10 @@ fun TicketsScreen(viewModel: SharedViewModel) {
     var selectedTicketImage by remember { mutableStateOf<String?>(null) }
     var selectedTicketDetails by remember { mutableStateOf<Ticket?>(null) }
 
+    // States for edit and delete functionality
+    var editingTicket by remember { mutableStateOf<Ticket?>(null) }
+    var showDeleteConfirmation by remember { mutableStateOf<Ticket?>(null) }
+
     // Calculate total tickets and total spending
     val totalTickets = searchResults.size
     val totalSpending = searchResults.sumOf { it.total }
@@ -244,6 +248,28 @@ fun TicketsScreen(viewModel: SharedViewModel) {
                                 color = Color.Black
                             )
                         }
+
+                        // Botones de editar y eliminar
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Button(
+                                onClick = { editingTicket = ticket },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
+                            ) {
+                                Text("Editar", color = Color.White)
+                            }
+
+                            Button(
+                                onClick = { showDeleteConfirmation = ticket },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+                            ) {
+                                Text("Eliminar", color = Color.White)
+                            }
+                        }
                     }
                 }
             }
@@ -342,6 +368,107 @@ fun TicketsScreen(viewModel: SharedViewModel) {
                     }
                 }
             }
+        }
+
+        // Modal de edición
+        editingTicket?.let { ticket ->
+            Dialog(onDismissRequest = { editingTicket = null }) {
+                var empresa by remember { mutableStateOf(ticket.empresa) }
+                var fecha by remember { mutableStateOf(ticket.fecha) }
+                var hora by remember { mutableStateOf(ticket.hora) }
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth()
+                    ) {
+                        Text("Editar Ticket", style = MaterialTheme.typography.titleLarge)
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        OutlinedTextField(
+                            value = empresa,
+                            onValueChange = { empresa = it },
+                            label = { Text("Empresa") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value = fecha,
+                            onValueChange = { fecha = it },
+                            label = { Text("Fecha") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value = hora,
+                            onValueChange = { hora = it },
+                            label = { Text("Hora") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Button(
+                                onClick = { editingTicket = null },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
+                            ) {
+                                Text("Cancelar")
+                            }
+                            Button(
+                                onClick = {
+                                    viewModel.updateTicket(ticket.copy(
+                                        empresa = empresa,
+                                        fecha = fecha,
+                                        hora = hora
+                                    ))
+                                    editingTicket = null
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDAAA3F))
+                            ) {
+                                Text("Guardar")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Modal de confirmación de eliminación
+        showDeleteConfirmation?.let { ticket ->
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirmation = null },
+                title = { Text("Confirmar eliminación") },
+                text = { Text("¿Estás seguro de que deseas eliminar este ticket?") },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.deleteTicket(ticket)
+                            showDeleteConfirmation = null
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+                    ) {
+                        Text("Eliminar", color = Color.White)
+                    }
+                },
+                dismissButton = {
+                    Button(
+                        onClick = { showDeleteConfirmation = null },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
+                    ) {
+                        Text("Cancelar")
+                    }
+                }
+            )
         }
     }
 }
